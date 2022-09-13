@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package grpc_example.proto.logger;
+
+option go_package = "github.com/dmitryzzz/grpc-example/proto/logger";
+
+import "google/protobuf/timestamp.proto";
+
+service LoggerRepo {
+  rpc GetTail(GetTailRequest) returns (Log) {}
+}
+
+message GetTailRequest {
+}
+
+message LogRow {
+  google.protobuf.Timestamp ts = 1;
+  string msg = 2;
+}
+
+message Log {
+  repeated LogRow logs = 1;
+}

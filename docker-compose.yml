@@ -1,0 +1,115 @@
+version: '3.7'
+services:
+  postgres:
+    image: postgres:14.2
+    container_name: postgres
+    restart: always
+    volumes:
+      # initdb.sh creates users table
+      - ./docker/psql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    logging:
+      driver: none
+    environment:
+       POSTGRES_PASSWORD: postgres
+       POSTGRES_DB: user_service
+
+  redis:
+    image: redis:7.0-rc-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    logging:
+      driver: none
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.1.0
+    container_name: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    logging:
+      driver: none
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.1.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    logging:
+      driver: none
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_CREATE_TOPICS: "user_creation:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_INTERNAL://broker:29092
+      KAFKA_AUTO_CRETE_TOPIC_ENABLE: 'true'
+
+  clickhouse:
+    image: yandex/clickhouse-server:21.3.20
+    container_name: clickhouse
+    logging:
+      driver: none
+    ports:
+     - "9009:9000"
+    volumes:
+      # init.sql creates log database and user_creation table
+      - "./docker/ch/init.sql:/docker-entrypoint-initdb.d/init.sql"
+
+  server:
+    build:
+      context: ./
+      dockerfile: ./services/server/Dockerfile
+    container_name: server
+    depends_on:
+      - kafka
+      - postgres
+      - redis
+    ports:
+      - "8001:8001"
+    # The server service accepts parameters through the environment
+    environment:
+      APP_POSTGRES_HOST: postgres
+      APP_REDIS_ADDRESS: redis:6379
+      APP_KAFKA_SERVER: kafka:9092
+
+  # logger:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./services/logger/Dockerfile
+  #   container_name: logger
+  #   depends_on:
+  #     - clickhouse
+  #     - kafka
+  #   ports:
+  #     - "8002:8002"
+  #   # The logger service accepts parameters through the command-line flags
+  #   command:
+  #     - --kafkaserver
+  #     - kafka:9092
+  #     - --chaddr
+  #     - clickhouse:9009
+
+  # client:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./services/client/Dockerfile
+  #   container_name: client
+  #   depends_on:
+  #     - server
+  #     - logger
+  #   # The client service accepts parameters through the command-line flags
+  #   command:
+  #     - --serveraddr
+  #     - server:8001
+  #     - --loggeraddr
+  #     - logger:8002
