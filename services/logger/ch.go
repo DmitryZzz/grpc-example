@@ -65,7 +65,7 @@ func (ch *CH) Connect(addr, db, user, pass string) {
 	defer func() {
 		ch.err = err
 	}()
-	log.Printf("addr: %s, db: %s, user: %s, pass: %s", addr, db, user, pass)
+	log.Printf("CLICKHOUSE: addr: %q, db: %q, user: %q, pass: %q", addr, db, user, pass)
 
 	conn, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{addr},

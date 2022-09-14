@@ -36,6 +36,7 @@ func (k *KafkaConsumer) Connect(server, kafkagroup string, ch *CH, topic string)
 	defer func() {
 		k.err = err
 	}()
+	log.Printf("KAFKA: server: %q, kafkagroup: %q, ch: %v, topic: %q", server, kafkagroup, ch, topic)
 
 	k.topic = topic
 	k.ch = ch
@@ -97,7 +98,7 @@ func (k *KafkaConsumer) createTopic(topic string) error {
 			log.Printf("Failed to create topic: %v\n", result.Error)
 			return result.Error
 		}
-		log.Printf("Creation topic: %v\n", result)
+		log.Printf("[KAFKA] Creation topic: %v\n", result)
 	}
 	return nil
 }
